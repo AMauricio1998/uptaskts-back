@@ -9,9 +9,6 @@ import { taskBelongsToProject, taskExist } from "../middleware/task";
 const router = Router();
 
 router.get('/', 
-    body('projectName').notEmpty().withMessage('El nombre del proyecto es obligatorio'),
-    body('clientName').notEmpty().withMessage('El nombre del cliente es obligatorio'),
-    body('description').notEmpty().withMessage('La descripcion del proyecto es obligatoria'),
     handleInputErrors,
     ProjectController.getAllProjects
 );

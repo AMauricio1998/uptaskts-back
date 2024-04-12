@@ -31,7 +31,7 @@ export class ProjectController {
 
     static createProject = async (req: Request, res: Response) => {
         const project = new Project(req.body);
-        
+
         try {
             await project.save();
             res.send("Proyecto creado correctamente");
