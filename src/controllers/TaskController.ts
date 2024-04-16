@@ -49,13 +49,11 @@ export class TaskController {
 
     static deleteTask = async (req: Request, res: Response) => {
         try {
-            req.project.tasks = req.project.tasks.filter( task => task.toString() !== req.task.id.toString());
-
-            await Promise.allSettled([Task.deleteOne(), req.project.save()]);
-
-            res.send("Tarea eliminada ccorrectamente");
+            req.project.tasks = req.project.tasks.filter( task => task.toString() !== req.task.id.toString() );
+            await Promise.allSettled([ req.task.deleteOne(), req.project.save() ]);
+            res.send("Tarea Eliminada Correctamente");
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            res.status(500).json({error: 'Hubo un error'});
         }
     }
 
