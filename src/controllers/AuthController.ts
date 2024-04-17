@@ -4,6 +4,7 @@ import { checkPassword, hashPassword } from '../utils/auth';
 import Token from '../models/Token';
 import { generateToken } from '../utils/token';
 import { AuthEmail } from '../emails/AuthEmail';
+import { genrateJWT } from '../utils/jwt';
 
 export class AuthController {
     static createAccount = async (req: Request, res: Response) => {
@@ -99,7 +100,117 @@ export class AuthController {
                 return res.status(404).json({ error: error.message });
             }
 
-            res.send("Autenticado");
+            const token = genrateJWT({
+                id: user.id
+            });
+
+            res.send(token);
+        } catch (error) {
+            res.status(500).json({ error: 'Hubo un error' });
+        }
+    }
+
+    static requestConfirmationCode = async (req: Request, res: Response) => {
+        try {
+            const { email } = req.body;
+
+            //Usuario existe
+            const user = await User.findOne({ email });
+            
+            if(!user) {
+                const error = new Error('El usuario no esta registrado');
+                return res.status(404).json({ error: error.message });
+            }
+
+            if(user.confirmed) {
+                const error = new Error('El usuario ya esta confirmado');
+                return res.status(403).json({ error: error.message });
+            }
+
+            //generar token
+            const token = new Token();
+            token.token = generateToken();
+            token.user = user.id;
+
+            //Enviar email
+            AuthEmail.sendConfirmationEmail({
+                email: user.email,
+                name: user.name,
+                token: token.token
+            });
+
+            await Promise.allSettled([ user.save(), token.save() ]);
+
+            res.send('Se envió un nuevo token a tu e-mail');
+        } catch (error) {
+            res.status(500).json({ error: 'Hubo un error' });
+        }
+    }
+
+    static forgotPassword = async (req: Request, res: Response) => {
+        try {
+            const { email } = req.body;
+
+            //Usuario existe
+            const user = await User.findOne({ email });
+            
+            if(!user) {
+                const error = new Error('El usuario no esta registrado');
+                return res.status(404).json({ error: error.message });
+            }
+
+            //generar token
+            const token = new Token();
+            token.token = generateToken();
+            token.user = user.id;
+            await token.save();
+
+            //Enviar email
+            AuthEmail.sendPasswordResetToken({
+                email: user.email,
+                name: user.name,
+                token: token.token
+            });
+
+            res.send('Se envió un nuevo token a tu e-mail');
+        } catch (error) {
+            res.status(500).json({ error: 'Hubo un error' });
+        }
+    }
+
+    static validateToken = async (req: Request, res: Response) => {
+        try {
+            const { token } = req.body;
+
+            const tokenExists = await Token.findOne({ token });
+
+            if(!tokenExists) {
+                const error = new Error("Token no valido");
+                return res.status(404).json({ error: error.message });
+            }
+            res.send('Token valido, Define tu nuevo password');
+        } catch (error) {
+            res.status(500).json({ error: 'Hubo un error' });
+        }
+    }
+
+    static updatePasswordWithToken = async (req: Request, res: Response) => {
+        try {
+            const { token } = req.params;
+
+            const tokenExists = await Token.findOne({ token });
+
+            if(!tokenExists) {
+                const error = new Error("Token no valido");
+                return res.status(404).json({ error: error.message });
+            }
+
+            const user = await User.findById(tokenExists.user);
+            user.password = await hashPassword(req.body.password);
+
+            await Promise.allSettled([ user.save(), tokenExists.deleteOne() ]);
+
+            res.send('El password se modifico correctamente');
         } catch (error) {
             res.status(500).json({ error: 'Hubo un error' });
         }

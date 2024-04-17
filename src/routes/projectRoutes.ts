@@ -5,6 +5,7 @@ import { handleInputErrors } from "../middleware/validation";
 import { TaskController } from "../controllers/TaskController";
 import { projectExists } from "../middleware/project";
 import { taskBelongsToProject, taskExist } from "../middleware/task";
+import { authemticate } from "../middleware/auth";
 
 const router = Router();
 
@@ -13,7 +14,14 @@ router.get('/',
     ProjectController.getAllProjects
 );
 
-router.post('/', ProjectController.createProject);
+router.post('/', 
+    authemticate,
+    body('projectName').notEmpty().withMessage('El nombre del proyecto es obligatorio'),
+    body('clientName').notEmpty().withMessage('El nombre del cliente es obligatorio'),
+    body('description').notEmpty().withMessage('La descripcion del proyecto es obligatoria'),
+    handleInputErrors,
+    ProjectController.createProject
+);
 
 router.get('/:id',
     param('id').isMongoId().withMessage('Id no valido'),
