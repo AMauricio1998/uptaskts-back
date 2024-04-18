@@ -1,12 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User';
+import User, { IUser } from '../models/User';
 
-export const authemticate = async (req: Request, res: Response, next: NextFunction) => {
+declare global {
+    namespace Express {
+        interface Request {
+            user?: IUser;
+        }
+    }
+}
+
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
     const bearer = req.headers.authorization;
     
     if(!bearer) {
-        const error = new Error('No autorizado');
+        const error = new Error('Token no proporcionado');
         return res.status(401).json({ error: error.message });
     }
 
@@ -16,12 +24,15 @@ export const authemticate = async (req: Request, res: Response, next: NextFuncti
         const decoded = jwt.verify(token, process.env.SECRET_KEY);
 
         if(typeof decoded === 'object' && decoded.id) {
-            const user = await User.findById(decoded.id);
-            console.log(user)
+            const user = await User.findById(decoded.id).select('_id email name');
+            if(user) {
+                req.user = user;
+                next();
+            } else {
+                res.status(500).json({ error: 'Token no valido' });
+            }
         } 
     } catch (error) {
         res.status(500).json({ error: 'Token no válido' });
-    }
-    
-    next();
+    }    
 }   
