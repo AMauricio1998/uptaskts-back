@@ -4,9 +4,10 @@ import { ProjectController } from "../controllers/ProjectController";
 import { handleInputErrors } from "../middleware/validation";
 import { TaskController } from "../controllers/TaskController";
 import { projectExists } from "../middleware/project";
-import { taskBelongsToProject, taskExist } from "../middleware/task";
+import { hasAuthorization, taskBelongsToProject, taskExist } from "../middleware/task";
 import { authenticate } from "../middleware/auth";
 import { TeamController } from "../controllers/TeamController";
+import { NoteController } from "../controllers/NoteController";
 
 const router = Router();
 
@@ -50,6 +51,7 @@ router.delete('/:id',
 router.param('projectId', projectExists);
 
 router.post('/:projectId/tasks',
+    hasAuthorization,
     param('projectId').isMongoId().withMessage('Id no valido'),
     body('name').notEmpty().withMessage('El nombre de la tarea es obligatorio'),
     body('description').notEmpty().withMessage('La descripcion de la tarea es obligatoria'),
@@ -73,6 +75,7 @@ router.get('/:projectId/tasks/:taskId',
 );
 
 router.put('/:projectId/tasks/:taskId',
+    hasAuthorization,
     param('taskId').isMongoId().withMessage('Id no valido'),
     body('name').notEmpty().withMessage('El nombre de la tarea es obligatorio'),
     body('description').notEmpty().withMessage('La descripcion de la tarea es obligatoria'),
@@ -81,6 +84,7 @@ router.put('/:projectId/tasks/:taskId',
 );
 
 router.delete('/:projectId/tasks/:taskId',
+    hasAuthorization,
     param('taskId').isMongoId().withMessage('Id no valido'),
     handleInputErrors,
     TaskController.deleteTask
@@ -113,6 +117,23 @@ router.post('/:projectId/team',
 router.delete('/:projectId/team/:userId',
     param('userId').isMongoId().withMessage('Usuario no valido'),
     TeamController.removeMemberById
+)
+
+/** Routes for notes */
+router.post('/:projectId/tasks/:taskId/notes',
+    body('content').notEmpty().withMessage('El contenido de la nota es obligatorio'),
+    handleInputErrors,
+    NoteController.createNote
+)
+
+router.get('/:projectId/tasks/:taskId/notes',
+    NoteController.getTaskNotes
+)
+
+router.delete('/:projectId/tasks/:taskId/notes/:noteId',
+    param('noteId').isMongoId().withMessage('Id no válido'),
+    handleInputErrors,
+    NoteController.deleteNote
 )
 
 export default router;
